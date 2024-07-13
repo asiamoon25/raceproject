@@ -1,20 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
     <Properties>
+        <Property name="LOG_DIR">${sys:LOG_DIR}</Property>
         <Property name="LOG_PATTERN">[%d{yyyy-MM-dd HH:mm:ss}] [%t] [%highlight{%-5level}] %logger{36}.%M(%F:%L) - %msg%n</Property>
     </Properties>
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout disableAnsi="false" pattern="${LOG_PATTERN}"/>
         </Console>
+
+        <RollingFile name="FileAppender"
+                     fileName="${LOG_DIR}/app/app.log"
+                     filePattern="${LOG_DIR}/app/app-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+        </RollingFile>
+
+        <!-- Controller Before Logging -->
+        <Routing name="BeforeControllerRoutingAppender">
+            <Routes pattern="${ctx:beforeClassName}.${ctx:beforeMethodName}">
+                <Route>
+                    <RollingFile name="BeforeControllerRollingFile"
+                                 fileName="${LOG_DIR}/req/controller/${ctx:beforeClassName:-defaultClass}/${ctx:beforeMethodName:-defaultMethod}/${ctx:beforeMethodName:-defaultMethod}.log"
+                                 filePattern="${LOG_DIR}/req/controller/${ctx:beforeClassName:-defaultClass}/${ctx:beforeMethodName:-defaultMethod}/${ctx:beforeMethodName:-defaultMethod}-%d{yyyy-MM-dd}-%i.log.gz">
+                        <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss}] [%t] %-5level [ip=%X{clientIp:-defaultIp}] [headers=%X{headers:-defaultHeaders}] [params=%X{params:-defaultParams}] - %msg%n"/>
+                        <Policies>
+                            <TimeBasedTriggeringPolicy interval="1"/>
+                            <SizeBasedTriggeringPolicy size="100MB"/>
+                        </Policies>
+                        <DefaultRolloverStrategy fileIndex="min" max="7"/>
+                    </RollingFile>
+                </Route>
+            </Routes>
+        </Routing>
+
+        <!-- Service Before Logging -->
+        <Routing name="BeforeServiceRoutingAppender">
+            <Routes pattern="${ctx:beforeClassName}.${ctx:beforeMethodName}">
+                <Route>
+                    <RollingFile name="BeforeServiceRollingFile"
+                                 fileName="${LOG_DIR}/req/service/${ctx:beforeClassName:-defaultClass}/${ctx:beforeMethodName:-defaultMethod}/${ctx:beforeMethodName:-defaultMethod}.log"
+                                 filePattern="${LOG_DIR}/req/service/${ctx:beforeClassName:-defaultClass}/${ctx:beforeMethodName:-defaultMethod}/${ctx:beforeMethodName:-defaultMethod}-%d{yyyy-MM-dd}-%i.log.gz">
+                        <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss}] [%t] %-5level [ip=%X{clientIp:-defaultIp}] [headers=%X{headers:-defaultHeaders}] [params=%X{params:-defaultParams}] - %msg%n"/>
+                        <Policies>
+                            <TimeBasedTriggeringPolicy interval="1"/>
+                            <SizeBasedTriggeringPolicy size="100MB"/>
+                        </Policies>
+                        <DefaultRolloverStrategy fileIndex="min" max="7"/>
+                    </RollingFile>
+                </Route>
+            </Routes>
+        </Routing>
+
+        <!-- Controller AfterReturning Logging -->
+        <Routing name="AfterReturningControllerRoutingAppender">
+            <Routes pattern="${ctx:afterClassName}.${ctx:afterMethodName}">
+                <Route>
+                    <RollingFile name="AfterReturningControllerRollingFile"
+                                 fileName="${LOG_DIR}/res/controller/${ctx:afterClassName:-defaultClass}/${ctx:afterMethodName:-defaultMethod}/${ctx:afterMethodName:-defaultMethod}.log"
+                                 filePattern="${LOG_DIR}/res/controller/${ctx:afterClassName:-defaultClass}/${ctx:afterMethodName:-defaultMethod}/${ctx:afterMethodName:-defaultMethod}-%d{yyyy-MM-dd}-%i.log.gz">
+                        <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss}] [%t] %-5level [result=%X{result}] - %msg%n"/>
+                        <Policies>
+                            <TimeBasedTriggeringPolicy interval="1"/>
+                            <SizeBasedTriggeringPolicy size="100MB"/>
+                        </Policies>
+                        <DefaultRolloverStrategy fileIndex="min" max="7"/>
+                    </RollingFile>
+                </Route>
+            </Routes>
+        </Routing>
+
+        <!-- Service AfterReturning Logging -->
+        <Routing name="AfterReturningServiceRoutingAppender">
+            <Routes pattern="${ctx:afterClassName}.${ctx:afterMethodName}">
+                <Route>
+                    <RollingFile name="AfterReturningServiceRollingFile"
+                                 fileName="${LOG_DIR}/res/service/${ctx:afterClassName:-defaultClass}/${ctx:afterMethodName:-defaultMethod}/${ctx:afterMethodName:-defaultMethod}.log"
+                                 filePattern="${LOG_DIR}/res/service/${ctx:afterClassName:-defaultClass}/${ctx:afterMethodName:-defaultMethod}/${ctx:afterMethodName:-defaultMethod}-%d{yyyy-MM-dd}-%i.log.gz">
+                        <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss}] [%t] %-5level [result=%X{result}] - %msg%n"/>
+                        <Policies>
+                            <TimeBasedTriggeringPolicy interval="1"/>
+                            <SizeBasedTriggeringPolicy size="100MB"/>
+                        </Policies>
+                        <DefaultRolloverStrategy fileIndex="min" max="7"/>
+                    </RollingFile>
+                </Route>
+            </Routes>
+        </Routing>
     </Appenders>
     <Loggers>
         <Root level="info">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+            <AppenderRef ref="BeforeControllerRoutingAppender"/>
+            <AppenderRef ref="AfterReturningControllerRoutingAppender"/>
+            <AppenderRef ref="BeforeServiceRoutingAppender"/>
+            <AppenderRef ref="AfterReturningServiceRoutingAppender"/>
         </Root>
     </Loggers>
-    <CustomLevels>
-        <Include file="log4j2-base.xml"/>
-        <Include file="log4j2-aop.xml"/>
-    </CustomLevels>
 </Configuration>

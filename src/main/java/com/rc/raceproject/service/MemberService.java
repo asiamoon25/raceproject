@@ -33,7 +33,7 @@ public class MemberService {
             memberRepository.save(m);
         }
 
-        System.out.println(m);
+//        System.out.println(m);
 
         if (m == null) {
             throw new RuntimeException("User could not be saved!"); // 로그 추가 예정

@@ -9,6 +9,7 @@ import org.aspectj.lang.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,22 +21,52 @@ public class LoggingAspect {
     @Autowired
     private HttpServletRequest request;
 
-    @Pointcut("within(@org.springframework.stereotype.Controller *) && !@annotation(com.rc.raceproject.annotation.NoLogging)")
-    public void controller(){}
+    @Pointcut("execution(* com.rc.raceproject.controller..*(..)) && !@annotation(com.rc.raceproject.annotation.NoLogging)")
+    protected void applicationControllerPackagePointcut(){}
 
-    @Pointcut("execution(* com.rc.raceproject.controller..*(..)) && !@annotation(com.rc.raceproject.annotation.NoLogging) || execution(* com.rc.raceproject.service..*(..)) && !@annotation(com.rc.raceproject.annotation.NoLogging)")
-    protected void applicationPackagePointcut(){}
+    @Pointcut("execution(* com.rc.raceproject.service..*(..)) && !@annotation(com.rc.raceproject.annotation.NoLogging)")
+    protected void applicationServicePackagePointcut(){}
 
-    @Before("applicationPackagePointcut()")
-    public void before(JoinPoint joinPoint) {
-        String className = joinPoint.getSignature().getDeclaringTypeName();
+    @Before("applicationControllerPackagePointcut()")
+    public void beforeController(JoinPoint joinPoint) {
+        logBefore(joinPoint, "controller");
+    }
+
+    @Before("applicationServicePackagePointcut()")
+    public void beforeService(JoinPoint joinPoint) {
+        logBefore(joinPoint, "service");
+    }
+
+    @AfterReturning(value = "applicationControllerPackagePointcut()", returning = "result")
+    public void afterController(JoinPoint joinPoint, Object result) {
+        logAfter(joinPoint, result, "controller");
+    }
+
+    @AfterReturning(value = "applicationServicePackagePointcut()", returning = "result")
+    public void afterService(JoinPoint joinPoint, Object result) {
+        logAfter(joinPoint, result, "service");
+    }
+
+    @AfterThrowing(value = "applicationControllerPackagePointcut()", throwing = "exception")
+    public void afterThrowingController(JoinPoint joinPoint, Exception exception) {
+        logAfter(joinPoint, exception, "controller");
+    }
+
+    @AfterThrowing(value = "applicationServicePackagePointcut()", throwing = "exception")
+    public void afterThrowingService(JoinPoint joinPoint, Exception exception) {
+        logAfter(joinPoint, exception, "service");
+    }
+
+    private void logBefore(JoinPoint joinPoint, String type) {
+        String fullClassName = joinPoint.getSignature().getDeclaringTypeName();
+        String className = joinPoint.getSignature().getDeclaringType().getSimpleName();
         String methodName = joinPoint.getSignature().getName();
         String clientIp = request.getRemoteAddr();
 
         // https header
         Map<String, String> headers = new HashMap<>();
         Enumeration<String> headerNames = request.getHeaderNames();
-        while(headerNames.hasMoreElements()) {
+        while (headerNames.hasMoreElements()) {
             String headerName = headerNames.nextElement();
             headers.put(headerName, request.getHeader(headerName));
         }
@@ -43,45 +74,47 @@ public class LoggingAspect {
         // log method parameter
         Map<String, Object> params = new HashMap<>();
         Enumeration<String> paramNames = request.getParameterNames();
-        while(paramNames.hasMoreElements()) {
+        while (paramNames.hasMoreElements()) {
             String paramName = paramNames.nextElement();
             params.put(paramName, request.getParameter(paramName));
         }
+
+        String reqLogDir = "req/" + type + "/" + className + "/" + methodName;
+        createDirectories(reqLogDir);
         ThreadContext.put("headers", !headers.isEmpty() ? headers.toString() : null);
-        ThreadContext.put("beforeClassName",className);
+        ThreadContext.put("beforeClassName", className);
         ThreadContext.put("beforeMethodName", methodName);
         ThreadContext.put("clientIp", clientIp);
-        Logger logger = LogManager.getLogger(className);
+        Logger logger = LogManager.getLogger(fullClassName);
         logger.info(params.toString());
     }
 
-    @AfterReturning(value = "applicationPackagePointcut()", returning = "result")
-    public void afterReturning(JoinPoint joinPoint, Object result) {
+    private void logAfter(JoinPoint joinPoint, Object object, String type) {
+        String fullClassName = joinPoint.getSignature().getDeclaringTypeName();
         String className = joinPoint.getSignature().getDeclaringType().getSimpleName();
         String methodName = joinPoint.getSignature().getName();
-        Logger logger = LogManager.getLogger(className);
+        Logger logger = LogManager.getLogger(fullClassName);
 
+        String resLogDir = "res/" + type + "/" + className + "/" + methodName;
+        createDirectories(resLogDir);
         ThreadContext.put("afterClassName", className);
         ThreadContext.put("afterMethodName", methodName);
 
-        logger.info("result: " + result);
+        if(object instanceof Exception) {
+            logger.info("exception: " + (Exception) object);
+        } else {
+            logger.info("result: " + object);
+        }
 
         ThreadContext.clearAll();
     }
 
-    @AfterThrowing(value = "applicationPackagePointcut()", throwing = "exception")
-    public void afterThrowing(JoinPoint joinPoint, Exception exception) {
-        String className = joinPoint.getSignature().getDeclaringType().getSimpleName();
-        String methodName = joinPoint.getSignature().getName();
-        Logger logger = LogManager.getLogger(className);
-
-        ThreadContext.put("afterClassName", className);
-        ThreadContext.put("afterMethodName", methodName);
-
-        logger.info("exception: " + exception);
-
-        ThreadContext.clearAll();
+    private void createDirectories(String dirPath) {
+        String rootPath = System.getProperty("LOG_DIR");
+        String fullPath = rootPath + "/" + dirPath;
+        File dir = new File(fullPath);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
     }
-
-
 }
