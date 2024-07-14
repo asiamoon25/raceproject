@@ -1,6 +1,7 @@
 package com.rc.raceproject.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rc.raceproject.domain.ErrorResponse;
 import com.rc.raceproject.domain.Role;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -83,10 +84,5 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    @Getter
-    @RequiredArgsConstructor
-    public class ErrorResponse{
-        private final HttpStatus status;
-        private final String message;
-    }
+
 }
